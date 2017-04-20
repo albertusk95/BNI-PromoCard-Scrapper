@@ -1,0 +1,19 @@
+{
+  "name": "node-scrapper",
+  "version": "1.0.0",
+  "description": "a simple scrapper using node.js",
+  "main": "solution.js",
+  "scripts": {
+    "start": "node solution.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "cheerio": "^0.22.0",
+    "http": "0.0.0",
+    "https": "^1.0.0",
+    "jsonfile": "^2.4.0"
+  }
+}
