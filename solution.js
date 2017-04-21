@@ -1,31 +1,33 @@
+/**
+*	File: solution.js
+*	Author: Albertus Kelvin
+*	Done at: Friday, 4/21/2017 4:57PM
+*/
+
 Promise = require('bluebird');
 var cheerio = require('cheerio');
 var http = require('https');
-//var jsonfile = require('jsonfile');
-var jsonfile = Promise.promisifyAll(require('jsonfile'));
 var writeJsonFile = require('write-json-file');
 
 var file = 'promo_general.json';
 var file2 = 'solution.json';
+var url_category = 'https://m.bnizona.com/index.php/category/index/promo';
 
 var Pages = [];
-//var Promos = {};
 var Promos = [];
 var Promos_Cloned = [];
 var ResultJSON = {};
-var url_category = 'https://m.bnizona.com/index.php/category/index/promo';
+var ResultJSON_Array = [];
 var counterPages = 0;
 var counterPromos = 0;
 
 var completionCounter = 0;
 var promoCompletionCounter = 0;
-var comS = [];
-var comP = [];
-var lengthOfPromos;
 
 var hasIn_interval_Pages_1 = 0;
 var hasIn_interval_Pages_2 = 0;
 
+// fetch page HTML
 var fetch = function (url) {
 	console.log('Processing', url);
     return new Promise(function (resolve, reject) {
@@ -135,17 +137,19 @@ var fetchPromos = function(idx_promo, promo_category, promo_url) {
 		.then(function (body) {
             
 			$ = cheerio.load(body);
-			$('.container > .twelve').eq(0).remove(); // remove header row
+			$('.container > .twelve').eq(0).remove();
 			
-			return $('.container > .twelve');
+			Promos[idx_promo]["promo_img"] = $('.container > .twelve > .banner > img').attr('src');
+			Promos[idx_promo]["promo_share_twitter"] = $('.container > .twelve > .share > a').attr('href');
+			
+			Promos[idx_promo]["promo_detail"] = $('.container > .twelve > .menu > li > #merchant-detail > p')
+				.text()
+				.trim();
+			
+			Promos[idx_promo]["promo_location"] = $('.container > .twelve > .menu > li > #merchant-location > .content > p').text().trim();
 			
         })
-		.then(function(body) {
-			
-			Promos[idx_promo]["promo_img"] = $(this).find('.banner > img').attr('src');
-			Promos[idx_promo]["promo_share_twitter"] = $(this).find('.share > a').attr('href');
-			Promos[idx_promo]["promo_detail"] = $(this).find('.menu > li > #merchant-detail').contents().wrap();
-			Promos[idx_promo]["promo_location"] = $(this).find('.menu > li > #merchant-location').contents().wrap();
+		.then(function() {
 			
 			promoCompletionCounter++;
 			
@@ -162,39 +166,27 @@ var fetchPromos = function(idx_promo, promo_category, promo_url) {
 
 function writeResultJSONToFile() {
 	 
-	jsonfile.writeFile(file, ResultJSON, {spaces: 2}, function(err) {
-		console.error(err);
-	});
+	console.log("\nWriting ResultJSON to File\n");
+	 
+	writeJsonFile(file2, ResultJSON_Array)
+		.then(function() {
+			console.log("Write ResultJSON OK");
+		});
 	
 }
 
 function writePromoLinksToFile() {
 	
-	console.log("\nWRITE PROMO GENERAL INFO TO FILE\n");
+	console.log("\nWriting Promo General Info to File\n");
 	
 	writeJsonFile(file, Promos)
 		.then(function() {
 			console.log("WriteJsonFile OK");
 		});
 	
-	/*
-	return jsonfile.writeFileAsync(file, Promos, {spaces: 2}, function(err) {
-		if (err) {
-			console.error(err);
-		}
-	});
-	*/
-	
-	/*
-	return fs.writeFileAsync('solution.json', Promos, function(err) {
-		if (err) {
-			console.error(err);
-		}
-	});
-	*/
-	
 }
 
+/*
 function startProcessPromo() {
 	
 	// if the Promos array is empty, we are Done!!
@@ -208,35 +200,10 @@ function startProcessPromo() {
 					}
 					
 				}, 2000);
-		
-		/*
-		Promise.all(comP)
-			.then(function() {
 				
-				console.log("startProcessPromo - DONE");
-				
-				for (var i = 0; i < lengthOfPromos; i++) {
-					ResultJSON[Promos_Cloned[i]["promo_category"]].push(Promos_Cloned[i]);
-				}
-				
-				// write ResultJSON to a file
-				writeResultJSONToFile();
-				
-			})
-			.catch(function() {
-				console.log("startProcessPromo - FAILED");
-			});
-		*/
-		
 	} else {
 	
 		var url = Promos.pop();
-		
-		// Sample output
-		/*
-		SAMPLE OF CURRENT STATE
-		Promos = [obj3_1, obj3_2, obj3_3, obj2_1, obj2_2]
-		*/
 		
 		fetchPromos(url["promo_category"], url["promo_url"])
 			.then(function(body) {
@@ -249,10 +216,11 @@ function startProcessPromo() {
 	}
 	
 }
+*/
 
+/*
 function startProcess() {
 			
-	// if the Pages array is empty, we are Done!!
 	if (!Pages.length) {
 		
 		var interval_Pages_1 = setInterval(function () {
@@ -270,12 +238,7 @@ function startProcess() {
 						var numberOfParallelRequests = 5;
 						
 						console.log("\n");
-						
-						//for (var i = 0; i < numberOfParallelRequests; i++) {
-							//console.log("Fetching promo data [LOOP]");
-							//startProcessPromo();
-						//}
-						
+										
 						clearInterval(interval_Pages_1);
 											
 						var interval_Pages_2 = setInterval(function () {
@@ -292,38 +255,9 @@ function startProcess() {
 				
 				}, 2000);
 		
-		/*
-		Promise.all(comS)
-			.then(function() {
-				
-				lengthOfPromos = Promos.length;
-				Promos_Cloned = Promos.slice();
-				
-				console.log("startProcess - DONE: " + lengthOfPromos);
-				
-				writePromoLinksToFile();
-				
-				// get the data for each promo	
-				var numberOfParallelRequests = 5;
-				
-				console.log("\n");
-				
-				for (var i = 0; i < numberOfParallelRequests; i++) {
-					console.log("Fetching promo data [LOOP]");
-					startProcessPromo();
-				}
-				
-			})
-			.catch(function() {
-				console.log("startProcess - FAILED");
-			});
-		*/
-		
 	} else {
 	
 		var url = Pages.pop();
-		
-		//console.log("url from popped pages: " + url["name"] + " : " + url["href"]);
 		
 		//var json = JSON.parse(url);
 		fetchLinkOfPromo(url["name"], url["href"])
@@ -337,7 +271,9 @@ function startProcess() {
 	}
 	
 }
+*/
 
+// Parallel with two promises
 function START_PROCESS(idx_start, idx_finish) {
 	
 	if (idx_start != idx_finish) {
@@ -349,6 +285,7 @@ function START_PROCESS(idx_start, idx_finish) {
 	
 }
 
+// Parallel with two promises
 function START_PROCESS_2(idx_start, idx_finish) {
 	
 	if (idx_start != idx_finish) {
@@ -360,6 +297,7 @@ function START_PROCESS_2(idx_start, idx_finish) {
 
 }
 
+// Starts here
 fetchLinkOfCategory(url_category)
 	.then(function(body) {
 		
@@ -367,27 +305,7 @@ fetchLinkOfCategory(url_category)
 		console.log("Pages");
 		console.log(Pages);
 		
-		//var numberOfParallelRequests = 3;
-		
-		/*
-		var interval_Pages_0 = setInterval(function () {
-					
-					if (!Pages.length) {
-						clearInterval(interval_Pages_0);
-					} else {
-						startProcess();
-					}
-					
-				}, 2000);
-		*/
-		
-		//for (var i = 0; i < numberOfParallelRequests; i++) {
-			//console.log("Fetching all promos from the category [LOOP]");
-			//startProcess();
-		//}
-		
-		
-		// EXPERIMENT CODE
+		// fetch promo links for each category
 		var idx_start, idx_finish;
 		var i = 0;
 		while (i < Pages.length) {
@@ -434,45 +352,29 @@ fetchLinkOfCategory(url_category)
 
 							hasIn_interval_Pages_1 = 1;
 
-							console.log("In interval_Pages_1: " + lengthOfPromos);
+							console.log("In interval_Pages_1");
 							
+							// write promo links to file promo_general.json
 							call_writePromoLinksToFile();
 							
-							/*
-							call_writePromoLinksToFile()
-								.then(function() {
-							
-									// write to file success
-									console.log("Write promo to file OK");
-									initiateScrapperForPromoDetails();
-									clearInterval(interval_Pages_1);
-							
-								})
-								.catch(function() {
-									// write to file failed
-									console.log("Write promo to file FAILED");
-								});
-							*/
-
 							clearInterval(interval_Pages_1);
 							
 						}
 						
 				}, 3000);
 		
-		
-		
-		// END OF EXPERIMENT CODE
-		
 	});
 
+// write the fetched promo links to a file
 function call_writePromoLinksToFile() {
 	
 	return Promise.all([writePromoLinksToFile()])
 		.then(function() {
 							
 			// write to file success
-			console.log("Write promo to file OK");
+			console.log("Write promo to file OK, initiate scrapper for Promo Details");
+			
+			// prepare to fetch the promo details for each promo
 			initiateScrapperForPromoDetails();
 	
 		})
@@ -484,6 +386,7 @@ function call_writePromoLinksToFile() {
 	
 }
 
+// fetch promo details for each promo
 function initiateScrapperForPromoDetails() {
 	
 	var idx_start, idx_finish;
@@ -533,12 +436,12 @@ function initiateScrapperForPromoDetails() {
 
 				hasIn_interval_Pages_2 = 1;
 				
-				console.log("In interval_Pages_2);
+				console.log("In interval_Pages_2");
 				
-				// write the final result to file
+				// write the final result to file solution.js
 				call_writeFinalResultToFile();
 				
-				clearInterval(interval_Pages_1);
+				clearInterval(interval_Pages_2);
 				
 			}
 			
@@ -546,43 +449,32 @@ function initiateScrapperForPromoDetails() {
 	
 }
 
+// write final result to file solution.json
 function call_writeFinalResultToFile() {
 	
 	for (var i = 0; i < Promos.length; i++) {
 		
-		// TODO !!!
-		ResultJSON[Promos_Cloned[i]["promo_category"]].push(Promos_Cloned[i]);
+		var cat_tmp = Promos[i]["promo_category"];
+		ResultJSON[cat_tmp].push(Promos[i]);
+		
 	}
 	
-	// write ResultJSON to a file
-	writeResultJSONToFile();
+	ResultJSON_Array.push(ResultJSON);
+	
+	// write the final result to stdout
+	//console.log(ResultJSON);
+	
+	return Promise.all([writeResultJSONToFile()])
+		.then(function() {
+							
+			// write to file success
+			console.log("Write ResultJSON to file OK");
+			console.log("Saved in file: solution.json");
+	
+		})
+		.catch(function() {
+			// write to file failed
+			console.log("Write ResultJSON to file FAILED");
+		});
 
 }
-
-/*
-var test = {};
-
-// input two new arrays
-var str = "fashion";
-test[str] = new Array();
-
-str = "grochery";
-test[str] = new Array();
-
-test[str].push({
-	"first": "first",
-	"second": "second"
-});
-
-console.log(test);
-
-if (test[str] != null) {
-	console.log("FILLED");
-} else {
-	test[str] = new Array();
-}
-
-test[str][test[str].length-1]["third"] = "third";
-
-console.log(test);
-*/
