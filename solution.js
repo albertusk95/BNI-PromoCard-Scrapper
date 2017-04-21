@@ -1,10 +1,13 @@
 Promise = require('bluebird');
 var cheerio = require('cheerio');
 var http = require('https');
-var jsonfile = require('jsonfile');
+//var jsonfile = require('jsonfile');
+var jsonfile = Promise.promisifyAll(require('jsonfile'));
+var writeJsonFile = require('write-json-file');
 
-var file = 'solution.json';
-	
+var file = 'promo_general.json';
+var file2 = 'solution.json';
+
 var Pages = [];
 //var Promos = {};
 var Promos = [];
@@ -19,6 +22,9 @@ var promoCompletionCounter = 0;
 var comS = [];
 var comP = [];
 var lengthOfPromos;
+
+var hasIn_interval_Pages_1 = 0;
+var hasIn_interval_Pages_2 = 0;
 
 var fetch = function (url) {
 	console.log('Processing', url);
@@ -97,22 +103,18 @@ var fetchLinkOfPromo = function(category_name, category_url) {
 			
 			completionCounter++;
 			
-			console.log("Pages: " + category_url + " " + Pages.length + " " + completionCounter);
+			console.log("Pages: " + category_url + " " + completionCounter);
 			
-			/*
-			if (completionCounter === 16) {
-				comS.push(1);
-			}
-			*/
+			return "CompletionCounter: " + completionCounter;
 			
 		})
 		.catch(function (err) {
-            throw err;
+            return "CompletionCounter: " + completionCounter;
         });
 	
 }
 
-var fetchPromos = function(promo_category, promo_url) {
+var fetchPromos = function(idx_promo, promo_category, promo_url) {
 	
 	// GET information from a spesific promo
 	// Sample of page source: https://m.bnizona.com/promo/view/16/1761
@@ -140,23 +142,21 @@ var fetchPromos = function(promo_category, promo_url) {
         })
 		.then(function(body) {
 			
-			Promos_Cloned[Promos.length]["promo_img"] = $(this).find('.banner > img').attr('src');
-			Promos_Cloned[Promos.length]["promo_share_twitter"] = $(this).find('.share > a').attr('href');
-			Promos_Cloned[Promos.length]["promo_detail"] = $(this).find('.menu > li > #merchant-detail').contents().wrap();
-			Promos_Cloned[Promos.length]["promo_location"] = $(this).find('.menu > li > #merchant-location').contents().wrap();
+			Promos[idx_promo]["promo_img"] = $(this).find('.banner > img').attr('src');
+			Promos[idx_promo]["promo_share_twitter"] = $(this).find('.share > a').attr('href');
+			Promos[idx_promo]["promo_detail"] = $(this).find('.menu > li > #merchant-detail').contents().wrap();
+			Promos[idx_promo]["promo_location"] = $(this).find('.menu > li > #merchant-location').contents().wrap();
 			
 			promoCompletionCounter++;
 			
-			/*
-			if (promoCompletionCounter === lengthOfPromos) {
-				comP.push(1);
-			}
-			*/
+			console.log("Promos: " + promo_url + " " + promoCompletionCounter);
+			
+			return "PromoCompletionCounter: " + promoCompletionCounter;
 			
 		})
 		.catch(function (err) {
-            throw err;
-        });
+        	return "PromoCompletionCounter: " + promoCompletionCounter;
+		});
 	
 }
 
@@ -165,6 +165,33 @@ function writeResultJSONToFile() {
 	jsonfile.writeFile(file, ResultJSON, {spaces: 2}, function(err) {
 		console.error(err);
 	});
+	
+}
+
+function writePromoLinksToFile() {
+	
+	console.log("\nWRITE PROMO GENERAL INFO TO FILE\n");
+	
+	writeJsonFile(file, Promos)
+		.then(function() {
+			console.log("WriteJsonFile OK");
+		});
+	
+	/*
+	return jsonfile.writeFileAsync(file, Promos, {spaces: 2}, function(err) {
+		if (err) {
+			console.error(err);
+		}
+	});
+	*/
+	
+	/*
+	return fs.writeFileAsync('solution.json', Promos, function(err) {
+		if (err) {
+			console.error(err);
+		}
+	});
+	*/
 	
 }
 
@@ -220,16 +247,6 @@ function startProcessPromo() {
 			});
 		
 	}
-	
-}
-
-function writePromoLinksToFile() {
-	
-	console.log("WRITE PROMO LINKS TO FILE");
-	
-	jsonfile.writeFile(file, Promos_Cloned, {spaces: 2}, function(err) {
-		console.error(err);
-	});
 	
 }
 
@@ -321,6 +338,28 @@ function startProcess() {
 	
 }
 
+function START_PROCESS(idx_start, idx_finish) {
+	
+	if (idx_start != idx_finish) {
+		return Promise.all([fetchLinkOfPromo(Pages[idx_start]["name"], Pages[idx_start]["href"]), 
+							fetchLinkOfPromo(Pages[idx_finish]["name"], Pages[idx_finish]["href"])]);
+	} else {
+		return Promise.all([fetchLinkOfPromo(Pages[idx_start]["name"], Pages[idx_start]["href"])]);
+	}
+	
+}
+
+function START_PROCESS_2(idx_start, idx_finish) {
+	
+	if (idx_start != idx_finish) {
+		return Promise.all([fetchPromos(idx_start, Promos[idx_start]["promo_category"], Promos[idx_start]["promo_url"]), 
+							fetchPromos(idx_finish, Promos[idx_finish]["promo_category"], Promos[idx_finish]["promo_url"])]);
+	} else {
+		return Promise.all([fetchPromos(idx_start, Promos[idx_start]["promo_category"], Promos[idx_start]["promo_url"])]);
+	}
+
+}
+
 fetchLinkOfCategory(url_category)
 	.then(function(body) {
 		
@@ -330,6 +369,7 @@ fetchLinkOfCategory(url_category)
 		
 		//var numberOfParallelRequests = 3;
 		
+		/*
 		var interval_Pages_0 = setInterval(function () {
 					
 					if (!Pages.length) {
@@ -339,15 +379,185 @@ fetchLinkOfCategory(url_category)
 					}
 					
 				}, 2000);
+		*/
 		
 		//for (var i = 0; i < numberOfParallelRequests; i++) {
 			//console.log("Fetching all promos from the category [LOOP]");
 			//startProcess();
 		//}
 		
+		
+		// EXPERIMENT CODE
+		var idx_start, idx_finish;
+		var i = 0;
+		while (i < Pages.length) {
+			idx_start = i;
+			
+			i++;
+			
+			if (i < Pages.length) {
+				idx_finish = i; 
+			
+				console.log("[Pages] start - finish: " + idx_start + " " + idx_finish);
+			
+				START_PROCESS(idx_start, idx_finish)
+					.then(function(sp) {
+						// scrapping success
+						console.log("[Pages] OK - " + sp[0] + " : " + sp[1]);
+					})
+					.catch(function(sp) {
+						// scrapping failed
+						console.log("[Pages] FAILED - " + sp[0] + " : " + sp[1]);
+					});
+			} else {
+				idx_finish = idx_start;
+				
+				console.log("[Pages] start - finish: " + idx_start + " " + idx_finish);
+				
+				START_PROCESS(idx_start, idx_finish)
+					.then(function(sp) {
+						// scrapping success
+						console.log("[Pages] OK - " + idx_start + ", " + idx_finish + " - " + sp[0]);
+					})
+					.catch(function(sp) {
+						// scrapping failed
+						console.log("[Pages] FAILED - " + sp[0]);
+					});
+			}
+			
+			i++;
+		}
+		
+		var interval_Pages_1 = setInterval(function () {
+                
+						if (completionCounter == Pages.length && hasIn_interval_Pages_1 == 0) {
+
+							hasIn_interval_Pages_1 = 1;
+
+							console.log("In interval_Pages_1: " + lengthOfPromos);
+							
+							call_writePromoLinksToFile();
+							
+							/*
+							call_writePromoLinksToFile()
+								.then(function() {
+							
+									// write to file success
+									console.log("Write promo to file OK");
+									initiateScrapperForPromoDetails();
+									clearInterval(interval_Pages_1);
+							
+								})
+								.catch(function() {
+									// write to file failed
+									console.log("Write promo to file FAILED");
+								});
+							*/
+
+							clearInterval(interval_Pages_1);
+							
+						}
+						
+				}, 3000);
+		
+		
+		
+		// END OF EXPERIMENT CODE
+		
 	});
 
+function call_writePromoLinksToFile() {
+	
+	return Promise.all([writePromoLinksToFile()])
+		.then(function() {
+							
+			// write to file success
+			console.log("Write promo to file OK");
+			initiateScrapperForPromoDetails();
+	
+		})
+		.catch(function() {
+			// write to file failed
+			console.log("Write promo to file FAILED");
+		});
+		
+	
+}
 
+function initiateScrapperForPromoDetails() {
+	
+	var idx_start, idx_finish;
+	var i = 0;
+	while (i < Promos.length) {
+		idx_start = i;
+		
+		i++;
+		
+		if (i < Promos.length) {
+			idx_finish = i; 
+		
+			console.log("[Promos] start - finish: " + idx_start + " " + idx_finish);
+		
+			START_PROCESS_2(idx_start, idx_finish)
+				.then(function(sp) {
+					// scrapping success
+					console.log("[Promos] OK - " + sp[0] + " : " + sp[1]);
+				})
+				.catch(function(sp) {
+					// scrapping failed
+					console.log("[Promos] FAILED - " + sp[0] + " : " + sp[1]);
+				});
+		} else {
+			idx_finish = idx_start;
+			
+			console.log("[Promos] start - finish: " + idx_start + " " + idx_finish);
+			
+			START_PROCESS_2(idx_start, idx_finish)
+				.then(function(sp) {
+					// scrapping success
+					console.log("[Promos] OK - " + idx_start + ", " + idx_finish + " - " + sp[0]);
+				})
+				.catch(function(sp) {
+					// scrapping failed
+					console.log("[Promos] FAILED - " + sp[0]);
+				});
+		}
+		
+		i++;
+	}
+	
+	
+	var interval_Pages_2 = setInterval(function () {
+		
+			if (promoCompletionCounter == Promos.length && hasIn_interval_Pages_2 == 0) {
+
+				hasIn_interval_Pages_2 = 1;
+				
+				console.log("In interval_Pages_2);
+				
+				// write the final result to file
+				call_writeFinalResultToFile();
+				
+				clearInterval(interval_Pages_1);
+				
+			}
+			
+		}, 3000);
+	
+}
+
+function call_writeFinalResultToFile() {
+	
+	for (var i = 0; i < Promos.length; i++) {
+		
+		// TODO !!!
+		ResultJSON[Promos_Cloned[i]["promo_category"]].push(Promos_Cloned[i]);
+	}
+	
+	// write ResultJSON to a file
+	writeResultJSONToFile();
+
+}
 
 /*
 var test = {};
